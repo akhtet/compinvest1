@@ -6,6 +6,7 @@ import datetime
 
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 import QSTK.qstkutil.qsdateutil as du
 import QSTK.qstkutil.DataAccess as da
@@ -34,11 +35,7 @@ def read_market_data(ls_dates, ls_symbols):
 	ls_keys = ['close']
 
 	#ldt_timestamps = du.getNYSEdays(min(ls_dates), max(ls_dates) + datetime.timedelta(days=1), datetime.timedelta(hours=16))
-	print max(ls_dates)
-	raw_input("NEXT")
-
 	ldt_timestamps = du.getNYSEdays(min(ls_dates), max(ls_dates), datetime.timedelta(hours=16))
-	#dataobj = da.DataAccess('Yahoo	)
 	dataobj = da.DataAccess('Yahoo', cachestalltime=0)
 	
 	ldf_data = dataobj.get_data(ldt_timestamps, ls_symbols, ls_keys)
@@ -50,7 +47,6 @@ def read_market_data(ls_dates, ls_symbols):
 		d_data[s_key] = d_data[s_key].fillna(1.0)
 
 	df_close = d_data['close']
-	#df_close = df_close.reindex(index=ls_dates,columns=ls_symbols)
 	return df_close
 
 
@@ -58,7 +54,6 @@ def read_market_data(ls_dates, ls_symbols):
 
 def create_trade_matrix(fname, df_close, ls_symbols, ls_dates):
 
-	#df_trade = pd.DataFrame(index=df_close.index, columns=ls_symbols)
 	df_trade = pd.DataFrame(index=df_close.index, columns=ls_symbols)
 	df_trade = df_trade.fillna(0.0)
 
@@ -114,17 +109,14 @@ def create_fund_series(df_trade, df_close, ts_cash):
 			holding = df_holding[symbol].ix[timestamp]
 
 	df_close['_CASH'] = 1.0
-	print df_close
+	#print df_close
 	
 	df_holding['_CASH'] = ts_cash
-	print df_holding
+	#print df_holding
 	
 	ts_fund = pd.TimeSeries(0.0, index=df_trade.index)
 
 	for timestamp in df_close.index:
-#		print timestamp,
-#		print df_close[:].ix[timestamp]
-#		print df_holding[:].ix[timestamp]
 		ts_fund[timestamp] = np.dot(df_close[:].ix[timestamp], df_holding[:].ix[timestamp])
 
 	return ts_fund
@@ -149,15 +141,24 @@ if __name__ == '__main__':
 	#print ls_dates
 
 	df_close = read_market_data(ls_dates, ls_symbols)
-	print df_close
+	#print df_close
   
 	df_trade = create_trade_matrix(order_file, df_close, ls_symbols, ls_dates)
-	print df_trade
+	#print df_trade
 
 	ts_cash = create_cash_series(df_trade, df_close, cash_start)
-	print ts_cash
+	#print ts_cash
 
 	ts_fund = create_fund_series(df_trade, df_close, ts_cash)
 	print ts_fund
+
+	plt.clf()
+	fig = plt.figure()
+	fig.add_subplot(111)
+	plt.plot(ts_fund.index, ts_cash, alpha=0.4)
+	plt.plot(ts_fund.index, ts_fund, alpha=0.4)
+	plt.legend(['Cash', 'Fund']) 
+	fig.autofmt_xdate(rotation=45)
+	plt.savefig('cash_vs_fund.pdf', format='pdf')
 
 	write_output_file(value_file, ts_fund)		
