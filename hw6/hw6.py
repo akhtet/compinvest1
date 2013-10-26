@@ -26,8 +26,11 @@ def get_parameters():
 
 	lookback = int(raw_input("Lookback period :"))
 
+	n_target_a = float(raw_input("Target A :"))
+	n_target_b = float(raw_input("Target B :"))
+
 	fname  = raw_input("Report file name :")
-	return listname, dt_start, dt_end, lookback, fname	
+	return listname, dt_start, dt_end, lookback, n_target_a, n_target_b, fname	
 
 
 
@@ -36,8 +39,8 @@ def	read_market_data(s_listname, dt_start, dt_end):
 
 	ldt_timestamps = du.getNYSEdays(dt_start, dt_end, dt.timedelta(hours=16))
 	
-	#dataobj = da.DataAccess('Yahoo', cachestalltime=0)
-	dataobj = da.DataAccess('Yahoo')
+	dataobj = da.DataAccess('Yahoo', cachestalltime=0)
+	#dataobj = da.DataAccess('Yahoo')
 	ls_symbols = dataobj.get_symbols_from_list(s_listname)
 	ls_symbols.append('SPY')	
 
@@ -80,7 +83,7 @@ def get_bollinger(df_close):
 
 
 
-def find_events(df_bollinger):
+def find_events(df_bollinger, n_target_a, n_target_b):
 
 	df_events = pd.DataFrame(columns=df_bollinger.columns, index=df_bollinger.index)
 	df_events = df_bollinger * np.NAN
@@ -91,7 +94,7 @@ def find_events(df_bollinger):
 			n_price_today = df_bollinger[s_symbol].ix[i]	
 			n_price_yest = df_bollinger[s_symbol].ix[i - 1]	
 
-			if n_price_today <= -2.0 and n_price_yest >= -2.0 and df_bollinger['SPY'][i] >= 1.0:
+			if n_price_today <= n_target_a and n_price_yest >= n_target_a and df_bollinger['SPY'][i] >= n_target_b:
 				df_events[s_symbol][i] = 1
 				n_events = n_events + 1
 				print '\r', n_events, 
@@ -104,18 +107,18 @@ def find_events(df_bollinger):
 
 if __name__ == '__main__':
 
-	s_listname, dt_start, dt_end, n_lookback, s_fname = get_parameters()	
+	s_listname, dt_start, dt_end, n_lookback, n_target_a, n_target_b, s_fname = get_parameters()	
 
 	d_data = read_market_data(s_listname, dt_start, dt_end) 
 
 	df_bollinger = get_bollinger(d_data['close'])
 
-	df_events = find_events(df_bollinger)
+	df_events = find_events(df_bollinger, n_target_a, n_target_b)
 
 	print df_events
 
 	ep.eventprofiler(df_events, d_data, i_lookback=20, i_lookforward=20,
-		s_filename='MyEventStudy.pdf', b_market_neutral=True, b_errorbars=True, s_market_sym='SPY')
+		s_filename=s_fname, b_market_neutral=True, b_errorbars=True, s_market_sym='SPY')
 
 	#gen_orders
 
